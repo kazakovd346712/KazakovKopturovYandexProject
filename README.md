@@ -22,12 +22,17 @@
 ## Структура проекта
 ```
 .
-├── app  # Основной код
+├── app
+│   ├── city_service.py
 │   ├── __init__.py
-│   ├── main.py
 │   └── responses.py  # Реплики Алисы
-├── data  # Базы данных городов
+├── data
+│   ├── cities.csv  # База городов
+│   ├── init_cities.py
+│   └── russia-cities.json
 ├── docs  # Пояснительная записка, презентация и т.д.
+│   └── ТЗ.docx
+├── main.py
 ├── README.md
 └── requirements.txt
 ```
