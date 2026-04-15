@@ -66,9 +66,13 @@ def check_city(city_name: str) -> bool:
 
 
 def choose_city(first_letter: str) -> str:
-    """Возвращает случайный город из CITIES_NAMES и удаляет его отттуда"""
+    """Возвращает случайный город из CITIES_NAMES и удаляет его отттуда. Возвращает None при неправильной первой букве,
+     False при невозможности выбора"""
 
     if first_letter in CITIES_NAMES:
-        return CITIES_NAMES[first_letter].pop(randint(0, len(CITIES_NAMES[first_letter]) - 1))
+        if CITIES_NAMES[first_letter]:
+            return CITIES_NAMES[first_letter].pop(randint(0, len(CITIES_NAMES[first_letter]) - 1))
+        else:
+            return False
     else:
         return None
