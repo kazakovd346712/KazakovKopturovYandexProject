@@ -80,13 +80,32 @@ def handle_dialog(req, res):
         session = sessionStorage[user_id]
         message, alice_city = first_turn(session)
 
-        res['response']['text'] = choice(Phrases.greeting).format(alice_city)
+        res['response']['text'] = choice(Phrases.greeting).format(Commands.rules[0], alice_city)
         return
 
     # Сюда дойдем только, если пользователь не новый,
 
     session = sessionStorage[user_id]
-    city_name = res['response']['text'].strip()
+    response_text = res['response']['text'].strip()
+
+    if response_text in Commands.rules:
+        res['response']['text'] = choice(Phrases.rules).format(
+            Commands.surrender[0],
+            Commands.show_location[0],
+            Commands.rules[0]
+        )
+        return
+
+    if response_text in Commands.show_location:
+        # TODO: добавить показ изображения
+        return
+
+    if response_text in Commands.surrender:
+        res['response']['text'] = choice(Phrases.win)
+        res['response']['end_session'] = True
+        return
+
+    city_name = response_text
 
     message, result = process_turn(city_name, session)
 
@@ -135,7 +154,7 @@ def process_turn(city_name: str, session: dict):
 
 
 def first_turn(session: dict):
-    alice_city = choose_city(session["last_letter"], session["cities_names"])
+    alice_city = choose_city(choice(session["cities_names"].keys), session["cities_names"])
 
     session["last_letter"] = get_last_letter(alice_city)
     session["used_cities"].append(alice_city)
