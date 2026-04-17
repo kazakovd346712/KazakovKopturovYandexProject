@@ -23,7 +23,7 @@
 ```
 .
 ├── app
-│   ├── city_service.py
+│   ├── city_service.py  # Функции для городов
 │   ├── __init__.py
 │   └── responses.py  # Реплики Алисы
 ├── data
