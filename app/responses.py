@@ -5,7 +5,7 @@ from dataclasses import dataclass
 class Phrases:
     """Датакласс для фраз Алисы"""
 
-    greeting = ("greeting [1]", "greeting [2]", "greeting [3]")
+    greeting = ("greeting! i name city {} [1]", "greeting! i name city {} [1]", "greeting! i name city {} [1]")
     name_city = ("city {} [1]", 'city {} [2]', "city {} [3]")
     invalid_first_letter = ("invalid first letter. Should start with {} [1]",
                             "invalid first letter. Should start with {} [2]",

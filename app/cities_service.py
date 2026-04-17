@@ -13,7 +13,7 @@ def group_cities_by_letters() -> dict:
         reader = csv.DictReader(file, delimiter=",")
 
         for row in reader:
-            city_name = row["name"]
+            city_name = row["name"].lower()
             first_letter = city_name[0].lower()
             if first_letter not in result:
                 result[first_letter] = [city_name]
@@ -32,8 +32,8 @@ def map_names_to_alt() -> dict:
         reader = csv.DictReader(file, delimiter=",")
 
         for row in reader:
-            city_name = row["name"]
-            city_name_alt = row["name_alt"]
+            city_name = row["name"].lower()
+            city_name_alt = row["name_alt"].lower()
             if city_name_alt not in result and city_name != city_name_alt:
                 result[city_name_alt] = city_name
 

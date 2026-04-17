@@ -76,25 +76,30 @@ def handle_dialog(req, res):
             "last_letter": None
         }
         # Заполняем текст ответа
-        res['response']['text'] = choice(Phrases.greeting)
+
+        session = sessionStorage[user_id]
+        message, alice_city = first_turn(session)
+
+        res['response']['text'] = choice(Phrases.greeting).format(alice_city)
         return
 
     # Сюда дойдем только, если пользователь не новый,
 
+    session = sessionStorage[user_id]
     city_name = res['response']['text'].strip()
 
-    message, result = process_turn(city_name, sessionStorage[user_id])
+    message, result = process_turn(city_name, session)
 
     if message == "city_already_used":
         res['response']['text'] = choice(Phrases.city_already_used)
     elif message == "city_not_found":
         res['response']['text'] = choice(Phrases.city_not_found)
     elif message == "invalid_first_letter":
-        res['response']['text'] = choice(Phrases.invalid_first_letter)
+        res['response']['text'] = choice(Phrases.invalid_first_letter).format(session["last_letter"])
     elif message == "player_win":
         res['response']['text'] = choice(Phrases.surrender)
     elif message == "OK":
-        res['response']['text'] = result
+        res['response']['text'] = choice(Phrases.name_city).format(result)
 
 
 def process_turn(city_name: str, session: dict):
@@ -124,7 +129,16 @@ def process_turn(city_name: str, session: dict):
         return "player_win", None
 
     session["last_letter"] = get_last_letter(alice_city)
-    session["used_cities"].append(city_name)
+    session["used_cities"].append(alice_city)
+
+    return "OK", alice_city
+
+
+def first_turn(session: dict):
+    alice_city = choose_city(session["last_letter"], session["cities_names"])
+
+    session["last_letter"] = get_last_letter(alice_city)
+    session["used_cities"].append(alice_city)
 
     return "OK", alice_city
 
