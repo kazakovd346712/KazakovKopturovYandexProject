@@ -1,9 +1,17 @@
 from dataclasses import dataclass
 
+
 @dataclass
 class Phrases:
     """Датакласс для фраз Алисы"""
 
-    # формат хранения
-    greeting: list = ("greeting1", "greeting2", "greeting3")
-    success: list = ("success1", "success2", "success3")
+    greeting = ("greeting [1]", "greeting [2]", "greeting [3]")
+    name_city = ("city {} [1]", 'city {} [2]', "city {} [3]")
+    invalid_first_letter = ("invalid first letter. Should start with {} [1]",
+                            "invalid first letter. Should start with {} [2]",
+                            "invalid first letter. Should start with {} [3]")
+    city_not_found = ("dont know this city [1]", "dont know this city [1]", "dont know this city [1]")
+    city_already_used = ("city already used [1]", "city already used [2]", "city already used [3]")
+    surrender = ("surrender [1]", "surrender [2]", "surrender [3]")
+    rules = ("rules", )
+

@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
 @dataclass
-class Phrases:
+class Commands:
     """Датакласс комманд для Алисы"""
 
     rules = ("расскажи правила", "правила", "объясни правила")

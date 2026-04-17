@@ -1,10 +1,12 @@
 from app.cities_service import group_cities_by_letters, map_names_to_alt, check_city, choose_city, remove_city
 from app.responses import Phrases
+from app.commands import Commands
 
 # импортируем библиотеки
 from flask import Flask, request, jsonify
 import logging
 from random import choice
+
 
 # создаём приложение
 # мы передаём __name__, в нём содержится информация,
@@ -77,20 +79,64 @@ def handle_dialog(req, res):
         res['response']['text'] = choice(Phrases.greeting)
         return
 
-
     # Сюда дойдем только, если пользователь не новый,
-    # и разговор с Алисой уже был начат
-    # Обрабатываем ответ пользователя.
-    # В req['request']['original_utterance'] лежит весь текст,
-    # что нам прислал пользователь
-    # Если он написал 'ладно', 'куплю', 'покупаю', 'хорошо',
-    # то мы считаем, что пользователь согласился.
-    # Подумайте, всё ли в этом фрагменте написано "красиво"?
-    res['response']['text'] = choice(Phrases.success)
+
+    city_name = res['response']['text'].strip()
+
+    message, result = process_turn(city_name, sessionStorage[user_id])
+
+    if message == "city_already_used":
+        res['response']['text'] = choice(Phrases.city_already_used)
+    elif message == "city_not_found":
+        res['response']['text'] = choice(Phrases.city_not_found)
+    elif message == "invalid_first_letter":
+        res['response']['text'] = choice(Phrases.invalid_first_letter)
+    elif message == "player_win":
+        res['response']['text'] = choice(Phrases.surrender)
+    elif message == "OK":
+        res['response']['text'] = result
 
 
-def process_turn(city_name: str):
-    pass
+def process_turn(city_name: str, session: dict):
+    first_letter = city_name[0]
+
+    if city_name in session["used_cities"] or (
+            city_name in session["alt_names"] and session["alt_names"][city_name] in session[
+        "used_cities"]):
+        return "city_already_used", None
+
+    if not check_city(city_name, session["cites_names"], session["alt_names"]):
+        return "city_not_found", None
+
+    if session["last_letter"] and session["last_letter"] != first_letter:
+        return "invalid_first_letter", None
+
+    session["last_letter"] = get_last_letter(city_name)
+    session["used_cities"].append(city_name)
+    remove_city(city_name, session["cities_names"], session["alt_names"])
+
+    if city_name in session["alt_names"]:
+        session["used_cities"].append(session["alt_names"][city_name])
+
+    alice_city = choose_city(session["last_letter"], session["cities_names"])
+
+    if not alice_city:
+        return "player_win", None
+
+    session["last_letter"] = get_last_letter(alice_city)
+    session["used_cities"].append(city_name)
+
+    return "OK", alice_city
+
+
+def get_last_letter(city_name: str) -> str:
+    normalized = city_name.lower()
+
+    for i in range(len(normalized) - 1, -1, -1):
+        if normalized[i] not in ['ь', 'ъ', 'ы']:
+            return normalized[i]
+
+    return None
 
 
 
