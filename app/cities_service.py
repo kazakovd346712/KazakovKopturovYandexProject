@@ -26,7 +26,7 @@ def group_cities_by_letters() -> dict:
 
 
 def map_names_to_alt() -> dict:
-    """Возвращает словарь именами городов по ключам name_alt (только для различающихся name и name_alt)"""
+    """Возвращает словарь с именами городов по ключам name_alt (только для различающихся name и name_alt)"""
 
     result = {}
 
@@ -38,6 +38,22 @@ def map_names_to_alt() -> dict:
             city_name_alt = row["name_alt"].lower()
             if city_name_alt not in result and city_name != city_name_alt:
                 result[city_name_alt] = city_name
+
+    return result
+
+
+def map_names_to_cords() -> dict:
+    """Возвращает словарь координат городов по именам"""
+
+    result = {}
+
+    with open(CITIES_FILE, encoding="utf-8") as file:
+        reader = csv.DictReader(file, delimiter=",")
+
+        for row in reader:
+            city_name = row["name"].lower()
+            if city_name not in result:
+                result[city_name] = {"lat": row["lat"], "lon": row["lon"]}
 
     return result
 
@@ -144,7 +160,8 @@ def remove_city(city_name: str, cities_names: dict, alt_names: dict) -> None:
         index = cities_names[first_letter].index(city_name)
         del cities_names[first_letter][index]
     else:
-        city_name = alt_names[city_name]
-        if city_name in cities_names[first_letter]:
-            index = cities_names[first_letter].index(city_name)
-            del cities_names[first_letter][index]
+        if city_name in alt_names:
+            city_name = alt_names[city_name]
+            if city_name in cities_names[first_letter]:
+                index = cities_names[first_letter].index(city_name)
+                del cities_names[first_letter][index]

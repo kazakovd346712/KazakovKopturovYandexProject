@@ -1,6 +1,7 @@
 from app.cities_service import (
     group_cities_by_letters,
     map_names_to_alt,
+    map_names_to_cords,
     check_city,
     choose_city,
     remove_city,
@@ -11,7 +12,6 @@ from app.commands import Commands
 from flask import Flask, request, jsonify
 import logging
 from random import choice
-
 
 app = Flask(__name__)
 
@@ -25,7 +25,7 @@ def main():
     response = {
         "session": request.json["session"],
         "version": request.json["version"],
-        "response": {"end_session": False},
+        "response": {"end_session": False, "buttons": []},
     }
 
     handle_dialog(request.json, response)
@@ -37,14 +37,11 @@ def main():
 
 def handle_dialog(req, res):
     user_id = req["session"]["user_id"]
-
-    make_suggests(res)
-
     if req["session"]["new"]:
-
         sessionStorage[user_id] = {
             "cities_names": group_cities_by_letters(),
             "alt_names": map_names_to_alt(),
+            "cities_cords": map_names_to_cords(),
             "used_cities": [],
             "last_letter": None,
         }
@@ -53,6 +50,9 @@ def handle_dialog(req, res):
         message, alice_city = first_turn(session)
 
         res["response"]["text"] = choice(Phrases.greeting).format(alice_city)
+        make_yandex_maps_suggest(res, alice_city, session)
+        make_suggests(res)
+
         return
 
     session = sessionStorage[user_id]
@@ -65,7 +65,8 @@ def handle_dialog(req, res):
         return
 
     if request_text in Commands.show_location:
-        # TODO: добавить показ изображения
+        res["response"]["text"] = choice(Phrases.send_map)
+        make_suggests(res)
         return
 
     if request_text in Commands.surrender:
@@ -90,14 +91,17 @@ def handle_dialog(req, res):
         res["response"]["end_session"] = True
     elif message == "OK":
         res["response"]["text"] = choice(Phrases.name_city).format(result)
+        make_yandex_maps_suggest(res, result, session)
+
+    make_suggests(res)
 
 
 def process_turn(city_name: str, session: dict):
     first_letter = city_name[0]
 
     if city_name in session["used_cities"] or (
-        city_name in session["alt_names"]
-        and session["alt_names"][city_name] in session["used_cities"]
+            city_name in session["alt_names"]
+            and session["alt_names"][city_name] in session["used_cities"]
     ):
         return "city_already_used", None
 
@@ -144,6 +148,7 @@ def get_last_letter(city_name: str) -> str:
 
     return None
 
+
 def make_suggests(res):
     buttons = [
         {
@@ -154,13 +159,26 @@ def make_suggests(res):
             "title": Commands.surrender[0],
             "hide": True
         },
-        {
-            "title": Commands.show_location[0],
-            "hide": True
-        }
     ]
 
-    res["response"]["buttons"] = buttons
+    res["response"]["buttons"].extend(buttons)
+
+
+def make_yandex_maps_suggest(res, city_name: str, session):
+    button = {
+            "title": Commands.show_location[0],
+            "url": get_yandex_maps_link(city_name, session),
+            "hide": True
+        }
+
+    res["response"]["buttons"].append(button)
+
+
+def get_yandex_maps_link(city_name: str, session):
+    lon, lat = session["cities_cords"][city_name.lower()]["lon"], session["cities_cords"][city_name.lower()]["lat"]
+
+    return f"https://yandex.ru/maps/?ll={lon},{lat}&z=6.8&pt={lon},{lat},pm2rdm"
+
 
 if __name__ == "__main__":
     app.run()
