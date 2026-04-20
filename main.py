@@ -1,135 +1,107 @@
-from app.cities_service import group_cities_by_letters, map_names_to_alt, check_city, choose_city, remove_city
+from app.cities_service import (
+    group_cities_by_letters,
+    map_names_to_alt,
+    check_city,
+    choose_city,
+    remove_city,
+)
 from app.responses import Phrases
 from app.commands import Commands
 
-# импортируем библиотеки
 from flask import Flask, request, jsonify
 import logging
 from random import choice
 
 
-# создаём приложение
-# мы передаём __name__, в нём содержится информация,
-# в каком модуле мы находимся.
-# В данном случае там содержится '__main__',
-# так как мы обращаемся к переменной из запущенного модуля.
-# если бы такое обращение, например, произошло внутри модуля logging,
-# то мы бы получили 'logging'
 app = Flask(__name__)
 
-# Устанавливаем уровень логирования
 logging.basicConfig(level=logging.INFO)
-
-# Создадим словарь, чтобы для каждой сессии общения
-# с навыком хранились подсказки, которые видел пользователь.
-# Это поможет нам немного разнообразить подсказки ответов
-# (buttons в JSON ответа).
-# Когда новый пользователь напишет нашему навыку,
-# то мы сохраним в этот словарь запись формата
-# sessionStorage[user_id] = {'suggests': ["Не хочу.", "Не буду.", "Отстань!" ]}
-# Такая запись говорит, что мы показали пользователю эти три подсказки.
-# Когда он откажется купить слона,
-# то мы уберем одну подсказку. Как будто что-то меняется :)
 sessionStorage = {}
 
 
-@app.route('/post', methods=['POST'])
-# Функция получает тело запроса и возвращает ответ.
-# Внутри функции доступен request.json - это JSON,
-# который отправила нам Алиса в запросе POST
+@app.route("/post", methods=["POST"])
 def main():
-    logging.info(f'Request: {request.json!r}')
-
-    # Начинаем формировать ответ, согласно документации
-    # мы собираем словарь, который потом отдадим Алисе
+    logging.info(f"Request: {request.json!r}")
     response = {
-        'session': request.json['session'],
-        'version': request.json['version'],
-        'response': {
-            'end_session': False
-        }
+        "session": request.json["session"],
+        "version": request.json["version"],
+        "response": {"end_session": False},
     }
 
-    # Отправляем request.json и response в функцию handle_dialog.
-    # Она сформирует оставшиеся поля JSON, которые отвечают
-    # непосредственно за ведение диалога
     handle_dialog(request.json, response)
 
-    logging.info(f'Response:  {response!r}')
+    logging.info(f"Response:  {response!r}")
 
-    # Преобразовываем в JSON и возвращаем
     return jsonify(response)
 
 
 def handle_dialog(req, res):
-    user_id = req['session']['user_id']
+    user_id = req["session"]["user_id"]
 
-    if req['session']['new']:
-        # Это новый пользователь.
-        # Инициализируем сессию и поприветствуем его.
-        # Запишем подсказки, которые мы ему покажем в первый раз
+    make_suggests(res)
+
+    if req["session"]["new"]:
 
         sessionStorage[user_id] = {
             "cities_names": group_cities_by_letters(),
             "alt_names": map_names_to_alt(),
             "used_cities": [],
-            "last_letter": None
+            "last_letter": None,
         }
-        # Заполняем текст ответа
 
         session = sessionStorage[user_id]
         message, alice_city = first_turn(session)
 
-        res['response']['text'] = choice(Phrases.greeting).format(Commands.rules[0], alice_city)
+        res["response"]["text"] = choice(Phrases.greeting).format(alice_city)
         return
 
-    # Сюда дойдем только, если пользователь не новый,
-
     session = sessionStorage[user_id]
-    response_text = res['response']['text'].strip()
+    request_text = req["request"]["original_utterance"].lower().strip()
 
-    if response_text in Commands.rules:
-        res['response']['text'] = choice(Phrases.rules).format(
-            Commands.surrender[0],
-            Commands.show_location[0],
-            Commands.rules[0]
+    if request_text in Commands.rules:
+        res["response"]["text"] = choice(Phrases.rules).format(
+            Commands.surrender[0], Commands.show_location[0], Commands.rules[0]
         )
         return
 
-    if response_text in Commands.show_location:
+    if request_text in Commands.show_location:
         # TODO: добавить показ изображения
         return
 
-    if response_text in Commands.surrender:
-        res['response']['text'] = choice(Phrases.win)
-        res['response']['end_session'] = True
+    if request_text in Commands.surrender:
+        res["response"]["text"] = choice(Phrases.win)
+        res["response"]["end_session"] = True
         return
 
-    city_name = response_text
+    city_name = request_text
 
     message, result = process_turn(city_name, session)
 
     if message == "city_already_used":
-        res['response']['text'] = choice(Phrases.city_already_used)
+        res["response"]["text"] = choice(Phrases.city_already_used)
     elif message == "city_not_found":
-        res['response']['text'] = choice(Phrases.city_not_found)
+        res["response"]["text"] = choice(Phrases.city_not_found)
     elif message == "invalid_first_letter":
-        res['response']['text'] = choice(Phrases.invalid_first_letter).format(session["last_letter"])
+        res["response"]["text"] = choice(Phrases.invalid_first_letter).format(
+            session["last_letter"]
+        )
     elif message == "player_win":
-        res['response']['text'] = choice(Phrases.surrender)
+        res["response"]["text"] = choice(Phrases.surrender)
+        res["response"]["end_session"] = True
     elif message == "OK":
-        res['response']['text'] = choice(Phrases.name_city).format(result)
+        res["response"]["text"] = choice(Phrases.name_city).format(result)
 
 
 def process_turn(city_name: str, session: dict):
     first_letter = city_name[0]
 
     if city_name in session["used_cities"] or (
-            city_name in session["alt_names"] and session["alt_names"][city_name] in session[
-        "used_cities"]):
+        city_name in session["alt_names"]
+        and session["alt_names"][city_name] in session["used_cities"]
+    ):
         return "city_already_used", None
 
-    if not check_city(city_name, session["cites_names"], session["alt_names"]):
+    if not check_city(city_name, session["cities_names"], session["alt_names"]):
         return "city_not_found", None
 
     if session["last_letter"] and session["last_letter"] != first_letter:
@@ -150,28 +122,45 @@ def process_turn(city_name: str, session: dict):
     session["last_letter"] = get_last_letter(alice_city)
     session["used_cities"].append(alice_city)
 
-    return "OK", alice_city
+    return "OK", alice_city.capitalize()
 
 
 def first_turn(session: dict):
-    alice_city = choose_city(choice(session["cities_names"].keys), session["cities_names"])
+    alice_first_letter = choice(list(session["cities_names"].keys()))
+    alice_city = choose_city(alice_first_letter, session["cities_names"])
 
     session["last_letter"] = get_last_letter(alice_city)
     session["used_cities"].append(alice_city)
 
-    return "OK", alice_city
+    return "OK", alice_city.capitalize()
 
 
 def get_last_letter(city_name: str) -> str:
     normalized = city_name.lower()
 
     for i in range(len(normalized) - 1, -1, -1):
-        if normalized[i] not in ['ь', 'ъ', 'ы']:
+        if normalized[i] not in ["ь", "ъ", "ы"]:
             return normalized[i]
 
     return None
 
+def make_suggests(res):
+    buttons = [
+        {
+            "title": Commands.rules[0],
+            "hide": True
+        },
+        {
+            "title": Commands.surrender[0],
+            "hide": True
+        },
+        {
+            "title": Commands.show_location[0],
+            "hide": True
+        }
+    ]
 
+    res["response"]["buttons"] = buttons
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app.run()
