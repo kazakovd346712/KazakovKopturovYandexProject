@@ -4,7 +4,7 @@ from random import randint
 CITIES_FILE = "data/cities.csv"
 
 
-def _group_cities_by_letters() -> dict:
+def group_cities_by_letters() -> dict:
     """Возвращает словарь городов с ключами по первым буквам"""
 
     result = {}
@@ -13,7 +13,7 @@ def _group_cities_by_letters() -> dict:
         reader = csv.DictReader(file, delimiter=",")
 
         for row in reader:
-            city_name = row["name"]
+            city_name = row["name"].lower()
             first_letter = city_name[0].lower()
             if first_letter not in result:
                 result[first_letter] = [city_name]
@@ -23,7 +23,7 @@ def _group_cities_by_letters() -> dict:
     return result
 
 
-def _map_names_to_alt() -> dict:
+def map_names_to_alt() -> dict:
     """Возвращает словарь именами городов по ключам name_alt (только для различающихся name и name_alt)"""
 
     result = {}
@@ -32,32 +32,28 @@ def _map_names_to_alt() -> dict:
         reader = csv.DictReader(file, delimiter=",")
 
         for row in reader:
-            city_name = row["name"]
-            city_name_alt = row["name_alt"]
+            city_name = row["name"].lower()
+            city_name_alt = row["name_alt"].lower()
             if city_name_alt not in result and city_name != city_name_alt:
                 result[city_name_alt] = city_name
 
     return result
 
 
-CITIES_NAMES = _group_cities_by_letters()
-ALT_NAMES = _map_names_to_alt()
-
-
-def check_city(city_name: str) -> bool:
+def check_city(city_name: str, cities_names: dict, alt_names: dict) -> bool:
     """Проверяет, есть ли город в базе городов"""
 
     first_letter = city_name[0].lower()
 
-    if first_letter in CITIES_NAMES:
-        names = CITIES_NAMES[first_letter]
+    if first_letter in cities_names:
+        names = cities_names[first_letter]
 
         if city_name in names:
             return True
 
         else:
-            if city_name in ALT_NAMES:
-                city_name = ALT_NAMES[city_name]
+            if city_name in alt_names:
+                city_name = alt_names[city_name]
 
                 if city_name in names:
                     return True
@@ -65,14 +61,28 @@ def check_city(city_name: str) -> bool:
     return False
 
 
-def choose_city(first_letter: str) -> str:
-    """Возвращает случайный город из CITIES_NAMES и удаляет его отттуда. Возвращает None при неправильной первой букве,
+def choose_city(first_letter: str, cities_names: dict) -> str:
+    """Возвращает случайный город из cities_names и удаляет его отттуда. Возвращает None при неправильной первой букве,
      False при невозможности выбора"""
 
-    if first_letter in CITIES_NAMES:
-        if CITIES_NAMES[first_letter]:
-            return CITIES_NAMES[first_letter].pop(randint(0, len(CITIES_NAMES[first_letter]) - 1))
+    if first_letter in cities_names:
+        if cities_names[first_letter]:
+            return cities_names[first_letter].pop(randint(0, len(cities_names[first_letter]) - 1))
         else:
             return False
     else:
         return None
+
+
+def remove_city(city_name: str, cities_names: dict, alt_names: dict) -> None:
+    """Убирает город из cities_names"""
+
+    first_letter = city_name[0].lower()
+    if city_name in cities_names[first_letter]:
+        index = cities_names[first_letter].index(city_name)
+        del cities_names[first_letter][index]
+    else:
+        city_name = alt_names[city_name]
+        if city_name in cities_names[first_letter]:
+            index = cities_names[first_letter].index(city_name)
+            del cities_names[first_letter][index]
